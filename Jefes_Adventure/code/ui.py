@@ -152,12 +152,17 @@ class HelpText:
         self.image_rect.x -= tile_size
         self.image_rect.y -= tile_size * 0.5
 
-        font = pg.font.Font("../assets/helptext.ttf", 46)
-        # font = pg.font.Font("../assets/craftmincho.otf", 44)
-        line_one, line_two = instructions[level - 1].split("\n")
+        with open('../assets/settings.json', 'r') as f:
+            lang = json.load(f)["language"]
+
+        fonts = [
+            {"font": pg.font.Font("../assets/helptext.ttf", 46), "file": instructions},
+            {"font": pg.font.Font("../assets/craftmincho.otf", 44), "file": instructions_jp}]
+
+        line_one, line_two = fonts[lang][file][level - 1].split("\n")
         color = (100, 80, 0)
-        self.text = font.render(line_one, True, color)
-        self.text2 = font.render(line_two, True, color)
+        self.text = fonts[lang]["font"].render(line_one, True, color)
+        self.text2 = fonts[lang]["font"].render(line_two, True, color)
         self.rect = self.text.get_rect(topleft=pos)
         self.rect.x += 10
         self.rect.y += tile_size
