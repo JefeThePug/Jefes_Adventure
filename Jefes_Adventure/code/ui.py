@@ -152,9 +152,9 @@ class HelpText:
         self.image_rect.x -= tile_size
         self.image_rect.y -= tile_size * 0.5
 
-        # font = pg.font.Font("../assets/helptext.ttf", 46)
-        font = pg.font.Font("../assets/craftmincho.otf", 44)
-        line_one, line_two = instructions_jp[level - 1].split("\n")
+        font = pg.font.Font("../assets/helptext.ttf", 46)
+        # font = pg.font.Font("../assets/craftmincho.otf", 44)
+        line_one, line_two = instructions[level - 1].split("\n")
         color = (100, 80, 0)
         self.text = font.render(line_one, True, color)
         self.text2 = font.render(line_two, True, color)
