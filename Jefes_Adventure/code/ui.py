@@ -1,4 +1,5 @@
 import pygame as pg
+import json
 from instructions import instructions, instructions_jp
 
 
@@ -148,10 +149,20 @@ class BoneIndicator(Indicator):
 class HelpText:
     def __init__(self, pos, level, tile_size, img):
         self.image = img
+        self.level = level
         self.image_rect = self.image.get_rect(topleft=pos)
         self.image_rect.x -= tile_size
         self.image_rect.y -= tile_size * 0.5
+        self.set_lang()
+        self.rect = self.text.get_rect(topleft=pos)
+        self.rect.x += 10
+        self.rect.y += tile_size
+        self.rect2 = self.text.get_rect(topleft=pos)
+        self.rect2.x += 10
+        self.rect2.y += tile_size * 2
+        
 
+    def set_lang(self):
         with open('../assets/settings.json', 'r') as f:
             lang = json.load(f)["language"]
 
@@ -159,18 +170,13 @@ class HelpText:
             {"font": pg.font.Font("../assets/helptext.ttf", 46), "file": instructions},
             {"font": pg.font.Font("../assets/craftmincho.otf", 44), "file": instructions_jp}]
 
-        line_one, line_two = fonts[lang][file][level - 1].split("\n")
+        line_one, line_two = fonts[lang]["file"][self.level - 1].split("\n")
         color = (100, 80, 0)
         self.text = fonts[lang]["font"].render(line_one, True, color)
         self.text2 = fonts[lang]["font"].render(line_two, True, color)
-        self.rect = self.text.get_rect(topleft=pos)
-        self.rect.x += 10
-        self.rect.y += tile_size
-        self.rect2 = self.text.get_rect(topleft=pos)
-        self.rect2.x += 10
-        self.rect2.y += tile_size * 2
 
     def update(self, event_info, x_shift):
+        self.set_lang()
         self.image_rect.x += x_shift
         self.rect.x += x_shift
         self.rect2.x += x_shift
