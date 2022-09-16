@@ -44,7 +44,7 @@ class Music:
         """
         returns a single background for either the Title Screen or the Overworld
         """
-        index_special = {"title": -1, "overworld": -2, "sbettings": -1}
+        index_special = {"title": -1, "overworld": -2, "settings": -1}
         return self.music[index_special[type]]
 
     def return_wavs(self, start, end):
