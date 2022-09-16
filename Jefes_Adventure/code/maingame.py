@@ -11,6 +11,19 @@ from enemy import Enemy
 from particles import ParticleEffect
 from settingsmenu import SettingsMenu
 
+DECOTYPE = {
+    0: {"decorations":"bush", "danger":"cactus", "enemies":"alien"}, 
+    1: {"decorations":"grass", "danger":"water", "enemies":"bee"}, 
+    2: {"decorations":"mushroom", "danger":"spikes", "enemies":"frog"}, 
+    3: {"decorations":"leaves", "danger":"", "enemies":"green_blob"}, 
+    4: {"decorations":"mushroom", "danger":"", "enemies":"ice_blob"}, 
+    5: {"decorations":"palm*", "danger":"", "enemies":"mouse"}, 
+    6: {"decorations":"sand_castle", "danger":"", "enemies":"penguin"}, 
+    7: {"decorations":"snow_pile", "danger":"", "enemies":"sandworm"}, 
+    8: {"decorations":"snowman*", "danger":"", "enemies":"snail"}, 
+    9: {"decorations":"tree*", "danger":"", "enemies":"snake"}, 
+    10: {"decorations":"", "danger":"", "enemies":"worm"},
+}
 
 class MainGame(GameState):
     def __init__(self, level_code, music, **assets):
@@ -26,7 +39,6 @@ class MainGame(GameState):
         # game-over variables
         with open("../assets/save.json", "r") as f:
             save_data = json.load(f)
-
         max_level = save_data["max_level"] + 1
         if max_level > 8:
             max_level = 1
@@ -47,6 +59,7 @@ class MainGame(GameState):
         # dust
         self.particle_sprite = pg.sprite.GroupSingle()
         self.player_on_ground = False
+        self.player_on_platform = False
         self.enemy_dust = pg.sprite.Group()
 
         # setup tile sprites
@@ -81,77 +94,66 @@ class MainGame(GameState):
         sprite_group = pg.sprite.Group()
         for row_index, row in enumerate(layout):
             for col_index, value in enumerate(row):
-                if value != -1:
-                    x, y = [(col_index - 4) * TILE_SIZE, row_index * TILE_SIZE]
-
-                    if tile_type == "ground" or tile_type == "player_barrier":
-                        ground_tiles = import_cut_graphic(self.imgs.ground["ground"])
-                        tile_surface = ground_tiles[value]
-                        if value < 2:
-                            sprite = FloatingTile((x, y), TILE_SIZE, tile_surface)
-                        else:
-                            sprite = StaticTile((x, y), TILE_SIZE, tile_surface)
-
-                    elif tile_type == "decorations":
-                        deco_type = {0: "bush", 1: "grass", 2: "mushroom"}
-                        sprite = AnimatedTile(
-                            (x, y), TILE_SIZE, self.imgs.decorations[deco_type[value]]
+                if value == -1: continue
+                x, y = [(col_index - 4) * TILE_SIZE, row_index * TILE_SIZE]
+                if tile_type == "ground":
+                    ground_tiles = import_cut_graphic(self.imgs.ground["ground"])
+                    tile_surface = ground_tiles[value]
+                    if (value % 4) < 2:
+                        sprite = FloatingTile((x, y), TILE_SIZE, tile_surface)
+                    else:
+                        sprite = StaticTile((x, y), TILE_SIZE, tile_surface)
+                elif tile_type == "decorations":
+                    if value in [5,8,9]: y -= TILE_SIZE
+                    sprite = AnimatedTile(
+                        (x, y), TILE_SIZE, self.imgs.decorations[DECOTYPE[value][tile_type]]
+                    )
+                elif tile_type == "danger":
+                    sprite = TrapTile(
+                        (x, y), TILE_SIZE, self.imgs.dangers[DECOTYPE[value][tile_type]]
+                    )
+                elif tile_type == "bones":
+                    sprite = BoneTile((x, y), TILE_SIZE, self.imgs.food["bones"])
+                elif tile_type == "enemies":
+                    sprite = Enemy(
+                        (x, y), TILE_SIZE, self.imgs.enemies[DECOTYPE[value][tile_type]]
+                    )
+                elif "barrier" in tile_type:
+                    sprite = Tile((x, y), TILE_SIZE)
+                elif tile_type == "gates":
+                    if value == 1:
+                        # Create goal at exit gate
+                        sprite = ExitTile(
+                            (x, y),
+                            TILE_SIZE,
+                            self.imgs.gates["exit"],
+                            self.player.sprite,
+                        )
+                        self.goal.add(sprite)
+                        continue
+                    else:
+                        sprite = InvisibleTile(
+                            (x, y), TILE_SIZE, self.imgs.gates["start"]
                         )
 
-                    elif tile_type == "danger":
-                        deco_type = {0: "cactus", 1: "water", 2: "spikes"}
-                        sprite = TrapTile(
-                            (x, y), TILE_SIZE, self.imgs.dangers[deco_type[value]]
-                        )
-
-                    elif tile_type == "bones":
-                        sprite = BoneTile((x, y), TILE_SIZE, self.imgs.food["bones"])
-
-                    elif tile_type == "enemies":
-                        deco_type = {
-                            0: "bee",
-                            2: "frog",
-                            3: "mouse",
-                            4: "snail",
-                            5: "worm",
-                        }
-                        sprite = Enemy(
-                            (x, y), TILE_SIZE, self.imgs.enemies[deco_type[value]]
-                        )
-
-                    elif tile_type == "constraints":
-                        sprite = Tile((x, y), TILE_SIZE)
-
-                    elif tile_type == "gates":
-                        if value == 1:
-                            # Create goal at exit gate
-                            sprite = ExitTile(
-                                (x, y),
-                                TILE_SIZE,
-                                self.imgs.gates["exit"],
-                                self.player.sprite,
-                            )
-                            self.goal.add(sprite)
-                            continue
-                        else:
-                            sprite = InvisibleTile(
-                                (x, y), TILE_SIZE, self.imgs.gates["start"]
-                            )
-
-                            # Create player at start gate
-                            player_sprite = Player(
-                                (x + TILE_SIZE / 2, y - TILE_SIZE / 2),
-                                self.imgs.pug,
-                                self.create_action_sprite,
-                            )  #                                self.sfx,
-                            self.player.add(player_sprite)
-
-                    elif tile_type == "treasures":
-                        sprite = TreasureTile(
-                            (x, y), TILE_SIZE, self.imgs.treasure, self.player.sprite
-                        )
-
-                    sprite_group.add(sprite)
+                        # Create player at start gate
+                        player_sprite = Player(
+                            (x + TILE_SIZE / 2, y - TILE_SIZE / 2),
+                            self.imgs.pug,
+                            self.create_action_sprite,
+                        )  #                                self.sfx,
+                        self.player.add(player_sprite)
+                elif tile_type == "treasures":
+                    sprite = TreasureTile(
+                        (x, y), TILE_SIZE, self.imgs.treasure, self.player.sprite
+                    )
+                elif "platforms" in tile_type:
+                    ground_tiles = import_cut_graphic(self.imgs.ground["ground"])
+                    tile_surface = ground_tiles[value]
+                    sprite = MovingPlatform(
+                        (x, y), TILE_SIZE, tile_surface, "horizontal" in tile_type
+                    )
+                sprite_group.add(sprite)
         return sprite_group
 
     def setup_sprites(self):
@@ -161,11 +163,15 @@ class MainGame(GameState):
         # ground setup
         ground_layout = import_csv(level_data["ground"])
         self.ground_sprites = self.create_tilegroup(ground_layout, "ground")
+        # moving platform setup
+        moving_plat_layout = import_csv(level_data["horizontal_platforms"])
+        self.plat_sprites = self.create_tilegroup(moving_plat_layout, "horizontal_platforms")
+        moving_plat_layout = import_csv(level_data["vertical_platforms"])
+        vp = self.create_tilegroup(moving_plat_layout, "vertical_platforms")
+        self.plat_sprites.add(vp.sprites())
         # decoration setup
         decoration_layout = import_csv(level_data["decorations"])
-        self.decoration_sprites = self.create_tilegroup(
-            decoration_layout, "decorations"
-        )
+        self.decoration_sprites = self.create_tilegroup(decoration_layout, "decorations")
         # bones setup
         bones_layout = import_csv(level_data["bones"])
         self.bone_sprites = self.create_tilegroup(bones_layout, "bones")
@@ -181,15 +187,15 @@ class MainGame(GameState):
         # enemies setup
         enemy_layout = import_csv(level_data["enemies"])
         self.enemy_sprites = self.create_tilegroup(enemy_layout, "enemies")
-        # enemy constraing setup
-        constraint_layout = import_csv(level_data["constraints"])
-        self.constraint_sprites = self.create_tilegroup(
-            constraint_layout, "constraints"
-        )
+        # enemy barrier setup
+        enemy_barrier_layout = import_csv(level_data["enemy_barrier"])
+        self.enemy_barrier_sprites = self.create_tilegroup(enemy_barrier_layout, "enemy_barrier")
+        # moving platform barrier setup
+        plat_barrier_layout = import_csv(level_data["platform_barrier"])
+        self.plat_barrier_sprites = self.create_tilegroup(plat_barrier_layout, "platform_barrier")
+        # off-stage barrier setup
         player_barrier_layout = import_csv(level_data["player_barrier"])
-        self.player_barrier_sprites = self.create_tilegroup(
-            player_barrier_layout, "player_barrier"
-        )
+        self.player_barrier_sprites = self.create_tilegroup(player_barrier_layout, "player_barrier")
 
     def scroll_x(self):
         player = self.player.sprite
@@ -230,6 +236,7 @@ class MainGame(GameState):
         self.player_on_ground = self.player.sprite.on_ground
 
     def create_landing_dust(self):
+        if self.player_on_platform: return
         if not self.player_on_ground and self.player.sprite.on_ground:
             if self.player.sprite.facing_right:
                 offset = pg.math.Vector2(10, 15)
@@ -246,8 +253,8 @@ class MainGame(GameState):
         player.hit_rect.x += player.direction.x * player.speed
 
         for sprite in (
-            self.ground_sprites.sprites() + self.player_barrier_sprites.sprites()
-        ):
+            self.ground_sprites.sprites() + self.player_barrier_sprites.sprites() + self.plat_sprites.sprites()
+            ):
             if sprite.rect.colliderect(player.hit_rect):
                 if player.direction.x < 0:
                     player.hit_rect.left = sprite.rect.right
@@ -258,18 +265,38 @@ class MainGame(GameState):
         player = self.player.sprite
         player.apply_gravity()
 
-        for sprite in self.ground_sprites.sprites() + self.treasure_sprites.sprites():
+        for sprite in (
+            self.ground_sprites.sprites() + self.treasure_sprites.sprites()
+        ):
             if sprite.rect.colliderect(player.hit_rect):
                 if player.direction.y > 0:
                     player.hit_rect.bottom = sprite.rect.top
                     player.direction.y = 0
                     player.on_ground = True
+                    self.player_on_ground = True
+                elif player.direction.y < 0:
+                    player.hit_rect.top = sprite.rect.bottom
+                    player.direction.y = 0
+
+        for sprite in self.plat_sprites.sprites():
+            if sprite.rect.colliderect(player.hit_rect):
+                if player.direction.y > 0:
+                    self.player_on_platform = True
+                    player.hit_rect.bottom = sprite.rect.top
+                    player.direction.y = 0
+                    player.on_ground = True
+                    if sprite.is_horizontal:
+
+                        player.hit_rect.x += sprite.speed * 0.5 * ((self.world_shift*-1) or player.speed)
+                        player.direction.x = sprite.speed
+                        #player.hit_rect.x += sprite.speed * player.speed * player.direction.x * self.world_shift
                 elif player.direction.y < 0:
                     player.hit_rect.top = sprite.rect.bottom
                     player.direction.y = 0
 
         if player.on_ground and player.direction.y < 0 or player.direction.y > 1:
             player.on_ground = False
+            player.on_platform = False
 
     def check_bones(self):
         bones_hit = len(
@@ -281,8 +308,13 @@ class MainGame(GameState):
 
     def reverse_enemies(self):
         for enemy in self.enemy_sprites.sprites():
-            if pg.sprite.spritecollide(enemy, self.constraint_sprites, False):
+            if pg.sprite.spritecollide(enemy, self.enemy_barrier_sprites, False):
                 enemy.reverse()
+
+    def reverse_platforms(self):
+        for platform in self.plat_sprites.sprites():
+            if pg.sprite.spritecollide(platform, self.plat_barrier_sprites, False):
+                platform.reverse()
 
     def next_game_state(self):
         self.music[self.stage].stop()
@@ -294,6 +326,7 @@ class MainGame(GameState):
 
     def check_enemy_death(self):
         for enemy in self.enemy_sprites.sprites():
+            if abs(self.player.sprite.rect.centery - enemy.rect.centery) > TILE_SIZE: continue
             bark_range = abs(self.player.sprite.rect.centerx - enemy.rect.centerx)
             if self.player.sprite.barking and bark_range < 100:
                 self.enemy_dust.add(
@@ -338,6 +371,7 @@ class MainGame(GameState):
         self.player_barrier_sprites.update(self.world_shift)
         self.particle_sprite.update(self.world_shift)
         self.ground_sprites.update(self.world_shift)
+        self.plat_sprites.update(self.world_shift)
         self.decoration_sprites.update(self.world_shift)
         self.gate_sprites.update(self.world_shift)
         self.bone_sprites.update(self.world_shift)
@@ -345,8 +379,17 @@ class MainGame(GameState):
         self.check_enemy_death()
         self.enemy_dust.update(self.world_shift)
         self.enemy_sprites.update(self.world_shift)
-        self.constraint_sprites.update(self.world_shift)
+        self.plat_barrier_sprites.update(self.world_shift)
+        self.enemy_barrier_sprites.update(self.world_shift)
         self.goal.update(self.world_shift)
+
+        self.reverse_enemies()
+        self.reverse_platforms()
+
+        self.horizontal_movement_collision()
+        self.get_player_on_ground()  # on ground before collision
+        self.vertical_movement_collision()
+        self.create_landing_dust()  # on ground after collision
 
         # check game over
         self.check_win()
@@ -386,21 +429,18 @@ class MainGame(GameState):
         self.bone_sprites.draw(display_screen)
         self.particle_sprite.draw(display_screen)
         self.ground_sprites.draw(display_screen)
+        self.plat_sprites.draw(display_screen)
         self.enemy_dust.draw(display_screen)
+        
 
         self.player.update(display_screen)
         self.check_bones()
 
         # player
-        self.horizontal_movement_collision()
-        self.get_player_on_ground()  # on ground before collision
-        self.vertical_movement_collision()
-        self.create_landing_dust()  # on ground after collision
         self.player.draw(display_screen)
 
         # draw tiles in front of player
         self.danger_sprites.draw(display_screen)
-        self.reverse_enemies()
         self.enemy_sprites.draw(display_screen)
 
         # draw buttons
@@ -414,3 +454,4 @@ class MainGame(GameState):
             self.help_text.draw(display_screen)
         if self.settings.sprite:
             self.settings.sprite.draw(display_screen)
+        print(self.player_on_ground)

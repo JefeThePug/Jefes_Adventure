@@ -44,7 +44,7 @@ class Music:
         """
         returns a single background for either the Title Screen or the Overworld
         """
-        index_special = {"title": -1, "overworld": -2, "settings": -1}
+        index_special = {"title": -1, "overworld": -2, "sbettings": -1}
         return self.music[index_special[type]]
 
     def return_wavs(self, start, end):
@@ -86,8 +86,8 @@ class Game:
         # Build first gamestate (the Title Screen)
         self.current_game_state = gs.TitleScreen(
             self.music.return_wav("title"),
-            bg=self.bgs.return_bg("title"),
-            imgs=self.imgs,
+            bg = self.bgs.return_bg("title"),
+            imgs = self.imgs,
         )
 
     def get_events(self):
@@ -131,7 +131,7 @@ class Game:
 
                 # get gamestate bg image and music
                 bg_index = self.choose_bg[new_state]
-                if type(bg_index) == str:
+                if isinstance(bg_index, str):
                     bg = self.bgs.return_bg(bg_index)
                     wav = self.music.return_wav(self.choose_wav[new_state])
                 else:

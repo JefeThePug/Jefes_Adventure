@@ -121,6 +121,21 @@ class FloatingTile(StaticTile):  # platforms
         self.rect.h -= 0.5 * TILE_SIZE
 
 
+class MovingPlatform(FloatingTile): # moving platforms
+    def __init__(self, pos, size, surface, is_horizontal):
+        super().__init__(pos, size, surface)
+        self.is_horizontal = is_horizontal
+        self.speed = -1
+
+    def reverse(self):
+        # accessed outside class
+        self.speed *= -1
+
+    def update(self, x_shift):
+        self.rect.x += self.speed * self.is_horizontal + x_shift
+        self.rect.y += self.speed * (not self.is_horizontal)
+
+
 class InvisibleTile(StaticTile):  # entrance gate
     def __init__(self, pos, size, surface):
         super().__init__(pos, size, surface)
